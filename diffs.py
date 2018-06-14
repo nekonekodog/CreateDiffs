@@ -1,5 +1,9 @@
 from krita import *
 import ast
+import os
+
+
+OUTDIR = "zzzOut"
 
 
 
@@ -14,12 +18,14 @@ def getTagsFromLayerName(name):
     if markerIdx != -1:
         statements = ast.parse(name[markerIdx + 1:]).body
         for i in statements:
+            if type(i) != ast.Assign:
+                raise Exception("Only assignment statement is available!" + str(type(i)))
             if type(i.value) == ast.Num:
                 ret[i.targets[0].id] = i.value.n
             elif type(i.value) == ast.Str:
                 ret[i.targets[0].id] = i.value.s
             else:
-                raise Exception("Only Num and Str are available:" + type(i.value))
+                raise Exception("Only Num and Str are available:" + str(type(i.value)))
     return ret
 
 def dicCombiGen(d):
@@ -71,6 +77,7 @@ class MyCreateDiffs:
         self.prevBatch = Krita.instance().batchmode()
         self.doc = Krita.instance().activeDocument()
         self.root = self.doc.rootNode()
+        self.fileName = os.path.basename(self.doc.fileName())
 
         tmpnodes = []
         getNodes(self.root, tmpnodes)
@@ -119,7 +126,7 @@ class MyCreateDiffs:
             # export png, 
             # for now, a pop up is shown for every export even when batchmode is set to True.
             # there must be something important i don't know. fix it later.
-            path = "nowTesting" + getDictStr(i) + ".png"
+            path = OUTDIR + "/" + self.fileName.replace(".", "_") + getDictStr(i) + ".png"
             if self.doc.exportImage(path, info):
                 print("file created:" + path)
             else:
@@ -128,6 +135,7 @@ class MyCreateDiffs:
         Krita.instance().setBatchmode(self.prevBatch)
 
     def export(self):
+        print("begin export...")
         visibleArr = [x.node.visible() for x in self.nodes]
 
         self.exporter()
@@ -136,6 +144,7 @@ class MyCreateDiffs:
             flag = visibleArr[i]
             self.nodes[i].node.setVisible(flag)
         self.doc.refreshProjection()
+        print("finished...")
 
 if __name__ == '__main__':
     obj = MyCreateDiffs()
